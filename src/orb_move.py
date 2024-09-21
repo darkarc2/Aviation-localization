@@ -135,6 +135,7 @@ def main(img_directory):
         displacement, final_matches, keypoints_1, keypoints_2 = compute_displacement(img_1, img_2, pyramid_levels, scale)
         current_position += displacement  # 更新当前位置
         displacements.append(current_position)
+        print(f"Displacement: {displacement}, Position: {current_position}")
 
         # 绘制轨迹
         draw_position = current_position * scale_factor + np.array([traj.shape[1] // 2, traj.shape[0] // 2])
@@ -157,6 +158,7 @@ def main(img_directory):
             
             # 获取 img1 的边界坐标变换之后的坐标
             img1_transform = cv2.perspectiveTransform(img1_pts, H)
+            # print(H)
             
             # 把 img2 和转换后的边界坐标连接起来
             result_pts = np.concatenate((img2_pts, img1_transform), axis=0)
@@ -197,7 +199,7 @@ def main(img_directory):
             
             # 在全局地图上显示当前位置
             map_position = current_position * scale_factor + map_offset
-            cv2.circle(global_map, tuple(map_position.astype(int)), 5, (0, 0, 255), -1)
+            cv2.circle(global_map, tuple(map_position.astype(int)), 5, (255, 0, 255), -1)
 
         # 显示匹配特征点的图片
         img_matches = cv2.drawMatches(img_1, keypoints_1, img_2, keypoints_2, final_matches, None)
