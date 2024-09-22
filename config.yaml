@@ -1,1 +1,20 @@
-K = 7744 7744 3976 2652 1
+K = np.array([
+    [7752.65, 0, 3976],
+    [0, 7735, 2652],
+    [0, 0, 1]
+])
+
+# 定义高度
+Z = 466.52
+
+# 定义投影
+wgs84 = Proj(init='epsg:4326')  # 定义WGS84坐标系
+enu_proj = Proj(proj='utm', zone=50, ellps='WGS84') # 定义ENU坐标系,Zone
+
+# 经纬度转换为UTM坐标
+x1, y1 = transform(wgs84, enu_proj, lon1, lat1)
+x2, y2 = transform(wgs84, enu_proj, lon2, lat2)
+
+# 计算ENU坐标
+dx = x2 - x1
+dy = y2 - y1

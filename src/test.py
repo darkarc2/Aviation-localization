@@ -129,6 +129,7 @@ class ImageStitcher:
             # 提取匹配点的坐标
             points1 = [kp1[match.queryIdx].pt for match in matches]
             points2 = [kp2[match.trainIdx].pt for match in matches]
+            print(points1[0], points2[0])
             
             self.result = self.compute_homography_and_warp(previous_image, current_image, points1, points2)
             if self.result is None:
