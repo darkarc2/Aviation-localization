@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import os
+import random
 
 # 加载图片路径
 image_paths = ['src/03_0001.JPG', 'src/03_0002.JPG']
@@ -11,11 +13,22 @@ zoom = 1.0  # 缩放比例
 # 定义窗口大小
 window_size = (800, 600)  # 窗口宽度和高度
 
+# # 初始化图像信息
+# images = [
+#     {'path': 'src/03_0001.JPG', 'pos': np.array([0, 0]), 'is_active': False, 'img': None},
+#     {'path': 'src/03_0002.JPG', 'pos': np.array([10000, 10000]), 'is_active': False, 'img': None}
+# ]
+
+# 获取目录下的所有图片文件
+image_dir = 'D:\\BaiduNetdiskDownload\\UAV_data'
+image_paths = [os.path.join(image_dir, f) for f in os.listdir(image_dir) if f.endswith(('.JPG', '.jpeg', '.png'))]
+
 # 初始化图像信息
-images = [
-    {'path': 'src/03_0001.JPG', 'pos': np.array([0, 0]), 'is_active': False, 'img': None},
-    {'path': 'src/03_0002.JPG', 'pos': np.array([10000, 10000]), 'is_active': False, 'img': None}
-]
+images = []
+for path in image_paths:
+    # 随机生成图像位置，确保每个图像最小相距1000以上
+    pos = np.array([random.randint(0, 100000), random.randint(0, 100000)])
+    images.append({'path': path, 'pos': pos, 'is_active': False, 'img': None})
 
 # 鼠标回调函数，用于处理鼠标事件
 def mouse_callback(event, x, y, flags, param):
