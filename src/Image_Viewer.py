@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 import random
-
+import threading
 
 
 class ImageViewer:
@@ -14,11 +14,14 @@ class ImageViewer:
         self.dragging = False
         self.last_mouse_pos = np.array([0, 0])
         self.images = []
+        self.view = np.zeros((self.window_size[1], self.window_size[0], 3), dtype=np.uint8)
 
         cv2.namedWindow('Image Viewer')
         cv2.setMouseCallback('Image Viewer', self.mouse_callback)
 
-
+    def set_camera_pos(self,pos):
+        self.camera_pos = pos
+        self.run()
 
     # 鼠标回调函数，用于处理鼠标事件
     def mouse_callback(self,event, x, y, flags, param):
@@ -36,26 +39,25 @@ class ImageViewer:
                 self.zoom *= 1.1
             else:
                 self.zoom /= 1.1
+        self.run()
     def add_image(self, path, pos):
         self.images.append({'path': path, 'pos': pos, 'is_active': False, 'img': None})
 
     def run(self):
-        while True:
-            # 创建黑色背景
-            view = np.zeros((self.window_size[1], self.window_size[0], 3), dtype=np.uint8)
-
+        # while True:
+        
             # 计算相机视图范围
             top_left = self.camera_pos
             bottom_right = self.camera_pos + np.array([self.window_size[0], self.window_size[1]]) / self.zoom
             extended_top_left = top_left - np.array([self.window_size[0], self.window_size[1]]) / self.zoom
             extended_bottom_right = bottom_right + np.array([self.window_size[0], self.window_size[1]]) / self.zoom
-
+    
             # 动态加载和卸载图像
             for image in self.images:
                 pos = image['pos']
                 img_top_left = pos
                 img_bottom_right = pos + np.array([1000, 1000])  # 假设图像大小为1000x1000
-
+    
                 # 判断图像是否在视图范围内
                 if (img_bottom_right[0] > extended_top_left[0] and img_top_left[0] < extended_bottom_right[0] and
                     img_bottom_right[1] > extended_top_left[1] and img_top_left[1] < extended_bottom_right[1]):
@@ -67,7 +69,9 @@ class ImageViewer:
                     if image['is_active']:
                         image['img'] = None  # 卸载图像
                         image['is_active'] = False
-
+    
+            # 创建黑色背景
+            self.view.fill(0)
             # 渲染活动图像
             for image in self.images:
                 if image['is_active']:
@@ -75,40 +79,70 @@ class ImageViewer:
                     pos = image['pos']
                     img_top_left = pos
                     img_bottom_right = pos + np.array([img.shape[1], img.shape[0]])
-
+    
                     # 判断图像是否在视图范围内
                     if (img_bottom_right[0] > top_left[0] and img_top_left[0] < bottom_right[0] and
                         img_bottom_right[1] > top_left[1] and img_top_left[1] < bottom_right[1]):
                         view_pos = (pos - top_left) * self.zoom
                         view_pos = view_pos.astype(int)
-
+    
                         x1 = max(0, view_pos[0])
                         y1 = max(0, view_pos[1])
                         x2 = min(self.window_size[0], view_pos[0] + int(img.shape[1] * self.zoom))
                         y2 = min(self.window_size[1], view_pos[1] + int(img.shape[0] * self.zoom))
-
+    
                         img_x1 = max(0, -view_pos[0])
                         img_y1 = max(0, -view_pos[1])
                         img_x2 = img_x1 + (x2 - x1)
                         img_y2 = img_y1 + (y2 - y1)
-
+    
                         img_resized = cv2.resize(img, (int(img.shape[1] * self.zoom), int(img.shape[0] * self.zoom)))
-
-                        view[y1:y2, x1:x2] = img_resized[img_y1:img_y2, img_x1:img_x2]
-
+    
+                        self.view[y1:y2, x1:x2] = img_resized[img_y1:img_y2, img_x1:img_x2]
+    
+            # 在图片之间绘制中线点连线
+            for i in range(1, len(self.images)):
+                if self.images[i-1]['is_active'] and self.images[i]['is_active']:
+                    pos1 = self.images[i-1]['pos']
+                    pos2 = self.images[i]['pos']
+    
+                    # 计算中线点
+                    mid_point1 = pos1 + np.array([self.images[i-1]['img'].shape[1] // 2, self.images[i-1]['img'].shape[0] // 2])
+                    mid_point2 = pos2 + np.array([self.images[i]['img'].shape[1] // 2, self.images[i]['img'].shape[0] // 2])
+    
+                    # 转换到视图坐标
+                    view_mid_point1 = (mid_point1 - top_left) * self.zoom
+                    view_mid_point2 = (mid_point2 - top_left) * self.zoom
+    
+                    view_mid_point1 = view_mid_point1.astype(int)
+                    view_mid_point2 = view_mid_point2.astype(int)
+    
+                    # 绘制连线
+                    cv2.line(self.view, tuple(view_mid_point1), tuple(view_mid_point2), (0, 255, 0), 2)
+    
             # 添加相机位置文本
-            cv2.putText(view, f'Camera Pos: {self.camera_pos}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
+            cv2.putText(self.view, f'Camera Pos: {self.camera_pos}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+    
             # 添加相机位置文本
-            cv2.putText(view, "press esc to exit", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(self.view, "press esc to exit", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
+    # def show_trajectory(self):
+    #     # 绘制轨迹
+    #     for i in range(1, len(self.images)):
+    #         cv2.line(self.view, self.images[i-1]["pos"], self.images[i]["pos"], (0, 255, 0), 2)
+
+    def show(self):
+
+        while True:
             # 显示图像
-            cv2.imshow('Image Viewer', view)
-
+            cv2.imshow('Image Viewer', self.view)
             # 退出条件
             if cv2.waitKey(1) & 0xFF == 27:  # 按下ESC键退出
                 break
         cv2.destroyAllWindows()
+    def start(self):
+        t=threading.Thread(target=self.show)
+        t.start()
 
 
 
@@ -119,4 +153,4 @@ if __name__ == "__main__":
     viewer.add_image("/home/arc/works/review_prj/UAV_slam/src/03_0001.JPG", np.array([0, 0]) )
     viewer.add_image("/home/arc/works/review_prj/UAV_slam/src/03_0002.JPG", np.array([-19.02805901*9,-98.53948212*9]) )
     
-    viewer.run()
+    viewer.start()
