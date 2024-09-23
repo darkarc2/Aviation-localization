@@ -6,14 +6,15 @@ import threading
 
 
 class ImageViewer:
-    def __init__(self, window_size=(800, 600), zoom=1.0):
+    def __init__(self,uav, window_size=(800, 600), zoom=1.0):
 
         self.window_size = window_size
         self.zoom = zoom
         self.camera_pos = np.array([0, 0], dtype=np.float32)
         self.dragging = False
         self.last_mouse_pos = np.array([0, 0])
-        self.images = []
+        self.frames = uav.frames
+        self.uav=uav
         self.view = np.zeros((self.window_size[1], self.window_size[0], 3), dtype=np.uint8)
 
         cv2.namedWindow('Image Viewer')
@@ -21,7 +22,7 @@ class ImageViewer:
 
     def set_camera_pos(self,pos):
         self.camera_pos = pos
-        self.run()
+        # self.run()
 
     # 鼠标回调函数，用于处理鼠标事件
     def mouse_callback(self,event, x, y, flags, param):
@@ -35,13 +36,18 @@ class ImageViewer:
         elif event == cv2.EVENT_LBUTTONUP:  # 左键抬起事件
             self.dragging = False
         elif event == cv2.EVENT_MOUSEWHEEL:  # 鼠标滚轮事件
+            center_before_zoom = self.camera_pos + np.array([self.window_size[0], self.window_size[1]]) / (2 * self.zoom)
             if flags > 0:
-                self.zoom *= 1.1
+                self.zoom *= 2
+                if self.zoom > 1:
+                    self.zoom = 1
             else:
                 self.zoom /= 1.1
-        self.run()
-    def add_image(self, path, pos):
-        self.images.append({'path': path, 'pos': pos, 'is_active': False, 'img': None})
+            center_after_zoom = self.camera_pos + np.array([self.window_size[0], self.window_size[1]]) / (2 * self.zoom)
+            self.camera_pos += center_before_zoom - center_after_zoom
+
+    # def add_image(self, path, pos):
+    #     self.frames.append({'path': path, 'pos': pos, 'is_active': False, 'img': None})
 
     def run(self):
         # while True:
@@ -53,30 +59,34 @@ class ImageViewer:
             extended_bottom_right = bottom_right + np.array([self.window_size[0], self.window_size[1]]) / self.zoom
     
             # 动态加载和卸载图像
-            for image in self.images:
-                pos = image['pos']
+            for frame in self.frames:
+                if frame.uv_pose is None:
+                    continue
+                pos = frame.uv_pose.copy()
                 img_top_left = pos
-                img_bottom_right = pos + np.array([1000, 1000])  # 假设图像大小为1000x1000
+                img_bottom_right = pos + np.array([3000, 3000])  # 假设图像大小为1000x1000
     
                 # 判断图像是否在视图范围内
                 if (img_bottom_right[0] > extended_top_left[0] and img_top_left[0] < extended_bottom_right[0] and
                     img_bottom_right[1] > extended_top_left[1] and img_top_left[1] < extended_bottom_right[1]):
-                    if not image['is_active']:
-                        image['img'] = cv2.imread(image['path'])  # 加载图像
-                        image['is_active'] = True
-                        print('Load image:', image['path'])
+                    if not frame.is_active:
+                        # frame.image = cv2.imread(frame.image_path)  # 加载图像
+                        # frame.is_active = True
+                        print('Load image:', frame.image_path)
+                        self.uav.active_frames.reactivate_frame(frame)
                 else:
-                    if image['is_active']:
-                        image['img'] = None  # 卸载图像
-                        image['is_active'] = False
+                    if frame.is_active:
+                        # frame.image = None  # 卸载图像
+                        # frame.is_active = False
+                        self.uav.active_frames.remove_frame(frame)
     
             # 创建黑色背景
             self.view.fill(0)
             # 渲染活动图像
-            for image in self.images:
-                if image['is_active']:
-                    img = image['img']
-                    pos = image['pos']
+            for frame in self.frames:
+                if frame.is_active and frame.uv_pose is not None:
+                    img = frame.image
+                    pos = frame.uv_pose.copy()
                     img_top_left = pos
                     img_bottom_right = pos + np.array([img.shape[1], img.shape[0]])
     
@@ -101,14 +111,14 @@ class ImageViewer:
                         self.view[y1:y2, x1:x2] = img_resized[img_y1:img_y2, img_x1:img_x2]
     
             # 在图片之间绘制中线点连线
-            for i in range(1, len(self.images)):
-                if self.images[i-1]['is_active'] and self.images[i]['is_active']:
-                    pos1 = self.images[i-1]['pos']
-                    pos2 = self.images[i]['pos']
+            for i in range(1, len(self.frames)):
+                if self.frames[i-1].is_active and self.frames[i].is_active and self.frames[i].uv_pose is not None :
+                    pos1 = self.frames[i-1].uv_pose.copy()
+                    pos2 = self.frames[i].uv_pose.copy()
     
                     # 计算中线点
-                    mid_point1 = pos1 + np.array([self.images[i-1]['img'].shape[1] // 2, self.images[i-1]['img'].shape[0] // 2])
-                    mid_point2 = pos2 + np.array([self.images[i]['img'].shape[1] // 2, self.images[i]['img'].shape[0] // 2])
+                    mid_point1 = pos1 + np.array([self.frames[i-1].image.shape[1] // 2, self.frames[i-1].image.shape[0] // 2])
+                    mid_point2 = pos2 + np.array([self.frames[i].image.shape[1] // 2, self.frames[i].image.shape[0] // 2])
     
                     # 转换到视图坐标
                     view_mid_point1 = (mid_point1 - top_left) * self.zoom
@@ -128,21 +138,21 @@ class ImageViewer:
 
     # def show_trajectory(self):
     #     # 绘制轨迹
-    #     for i in range(1, len(self.images)):
-    #         cv2.line(self.view, self.images[i-1]["pos"], self.images[i]["pos"], (0, 255, 0), 2)
+    #     for i in range(1, len(self.frames)):
+    #         cv2.line(self.view, self.frames[i-1]["pos"], self.frames[i]["pos"], (0, 255, 0), 2)
 
-    def show(self):
+    # def show(self):
 
-        while True:
-            # 显示图像
-            cv2.imshow('Image Viewer', self.view)
-            # 退出条件
-            if cv2.waitKey(1) & 0xFF == 27:  # 按下ESC键退出
-                break
-        cv2.destroyAllWindows()
-    def start(self):
-        t=threading.Thread(target=self.show)
-        t.start()
+    #     while True:
+    #         # 显示图像
+    #         cv2.imshow('Image Viewer', self.view)
+    #         # 退出条件
+    #         if cv2.waitKey(1) & 0xFF == 27:  # 按下ESC键退出
+    #             break
+    #     cv2.destroyAllWindows()
+    # def start(self):
+    #     t=threading.Thread(target=self.show)
+    #     t.start()
 
 
 

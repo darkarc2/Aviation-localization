@@ -75,7 +75,7 @@ class ActiveImage:
         # if len(frames) < 5 or len(frames) > 7:  # 活动图像必须包含5到7个帧
         #     raise ValueError("ActiveImage must contain 5 to 7 frames.")
         self.frames = frames  # 5-7个连续的图像对象
-        self.activate_len=7
+        self.activate_len=15
 
     def add_frame(self, frame):
         if len(self.frames) >= self.activate_len:
@@ -108,7 +108,7 @@ class ActiveImage:
         frame.is_active=False
         frame.image = None  # 删除图像
         frame.pyramid_images = None  # 删除图像
-        self.frames.remove(frame) #活动帧中移除
+        # self.frames.remove(frame) #活动帧中移除
     def reactivate_frame(self, frame):
         frame.is_active=True
         frame.image = cv2.imread(frame.image_path)  # 读取图像

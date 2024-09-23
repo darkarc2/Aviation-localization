@@ -23,12 +23,13 @@ class GlobalMap:
         if len(self.active_frames.frames)==1:
             return self.active_frames.frames[0].pyramid_images[2]
         # 获取所有活动帧的图像
-        images = [frame.pyramid_images[2] for frame in self.active_frames.frames]
-        keypoints_list = [frame.keypoints for frame in self.active_frames.frames]
+        active_frames2=[frame for frame in self.all_frames if frame.is_active and frame.pyramid_images is not None]
+        images = [frame.pyramid_images[2] for frame in active_frames2]
+        keypoints_list = [frame.keypoints for frame in active_frames2]
     
         for i in range(1, len(images)):
             # 检查当前帧的uv_pose是否为None
-            if self.active_frames.frames[i].uv_pose is  None:
+            if active_frames2[i].uv_pose is  None:
                 # 获取当前图像和基准图像的特征点
                 keypoints1 = [kp for kp in keypoints_list[i-1] if kp.pyramid_layer == 2]
                 keypoints2 = [kp for kp in keypoints_list[i] if kp.pyramid_layer == 2]
@@ -47,8 +48,8 @@ class GlobalMap:
                 
                 # 计算平移并进行图像拼接
                 deta_pose = self.compute_translation_and_warp(images[i-1], images[i], points1, points2)
-                self.active_frames.frames[i].uv_pose = deta_pose + self.active_frames.frames[i-1].uv_pose
-                print(f"帧{self.active_frames.frames[i].object_id}的uv_pose为{self.active_frames.frames[i].uv_pose}")
+                active_frames2[i].uv_pose = deta_pose*9 + active_frames2[i-1].uv_pose
+                print(f"帧{active_frames2[i].object_id}的uv_pose为{active_frames2[i].uv_pose}")
 
     # 计算特征点匹配的平移向量
     def compute_translation_and_warp(self, img_1, img_2, points1, points2):
@@ -128,23 +129,30 @@ def load_images(image_dir, viewer, uav):
             #     break
             path = os.path.join(image_dir, filename)
             uav.read_frame(path)
-            viewer.add_image(path, uav.frames[-1].uv_pose * 9)
-            viewer.set_camera_pos(uav.frames[-1].uv_pose * 9)
+            # viewer.add_image(path, uav.frames[-1].uv_pose * 9)
+            for i in range(len(uav.frames)):
+                if uav.frames[len(uav.frames)-i-1].uv_pose is not None:
+                    viewer.set_camera_pos(uav.frames[len(uav.frames)-i-1].uv_pose.copy())
+                    break
+            # viewer.set_camera_pos(uav.frames[-1].uv_pose.copy())
 
 
 if __name__ == "__main__":
-    image_dir = '/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/' 
+    image_dir = 'D:/Documents/CodeProjects/Aviation-localization/src/' 
+    image_dir = 'D:/BaiduNetdiskDownload/UAV_data' 
+
 
     img_count = 0  
     uav=UAV_LOCATION()
 
-    viewer = ImageViewer()
+    viewer = ImageViewer(uav)
     
     load_thread = threading.Thread(target=load_images, args=(image_dir, viewer, uav))
     load_thread.start()
 
     while True:
         # 显示图像
+        viewer.run()
         cv2.imshow('Image Viewer', viewer.view)
         # 退出条件
         if cv2.waitKey(1) & 0xFF == 27:  # 按下ESC键退出
