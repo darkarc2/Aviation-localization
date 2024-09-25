@@ -11,6 +11,7 @@ class Frame:
         self.pyramid_images = self.generate_pyramid(self.image)  # 生成金字塔图像
         self.keypoints = []  # 特征点列表
         self.pose = None  # 位姿
+        self.pose_in_camera = None  # 位姿
         self.uv_pose = None  # 位姿在图像上的像素坐标，这里是在最高分辨率的图像上的像素坐标
         self.object_id = None  # 对象ID
         self.is_active = True  # 是否是活帧
@@ -54,6 +55,37 @@ class Frame:
     def update_uv_pose(self, uav_pose):
         # 更新位姿在图像上的像素坐标的逻辑
         self.uv_pose = uav_pose
+    def uv_pose_to_pose_in_camera(self,uv_pose):
+        a=7952/35.9
+        b=5304/24
+        f=35
+
+        K = np.array([
+            [f*a, 0, 3976],
+            [0, f*b, 2652],
+            [0, 0, 1]
+        ])
+
+        # 相机坐标系下各图片中心点
+        pose_in_camera=uv_pose+np.array([3976,2652]) #把像素坐标转到图片中心下的坐标
+        pose_in_camera=np.array([pose_in_camera[0],pose_in_camera[1],1]) #转为齐次坐标
+
+        k_inv=np.linalg.inv(K)
+        pose_in_camera=466*k_inv@(pose_in_camera)
+
+        return pose_in_camera
+
+    def get_pose(self):
+        # 把第一张图片的位置作为原点，可以得到t
+        # 结合第二张图片的位置，可以得到R
+        R=np.array([[-0.48546517,-0.83104347,-0.27145961],
+            [ 0.85030412,-0.52101022, 0.07437244],
+            [-0.20323996,-0.19471799, 0.959572  ]])
+        t=np.array([ 772767.90754028,3577889.15665317, 0])
+
+        pose_in_camera=self.uv_pose_to_pose_in_camera(self.uv_pose)
+        self.pose=R@(pose_in_camera)+t #计算UTM坐标下的飞机位姿
+        return self.pose
 
 class Keypoint:
     def __init__(self, pt, pyramid_layer, associated_image, descriptor, is_anomalous=False):

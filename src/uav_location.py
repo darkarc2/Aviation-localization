@@ -14,6 +14,7 @@ class GlobalMap:
         self.uav_pose = uav_pose  # UAV位姿
         self.stitched_active_frames = stitched_active_frames  # 活动图像拼接结果
         self.all_frames=all_frames #所有帧对象
+    
 
     # 计算活动图像的位姿
     def compute_translation(self):
@@ -125,8 +126,8 @@ def load_images(image_dir, viewer, uav):
     for filename in sorted(os.listdir(image_dir)):
         if filename.endswith(".JPG"):
             img_count += 1
-            # if img_count > 50:
-            #     break
+            if img_count > 8:
+                break
             path = os.path.join(image_dir, filename)
             uav.read_frame(path)
             # viewer.add_image(path, uav.frames[-1].uv_pose * 9)
@@ -140,6 +141,7 @@ def load_images(image_dir, viewer, uav):
 if __name__ == "__main__":
     image_dir = 'D:/Documents/CodeProjects/Aviation-localization/src/' 
     image_dir = 'D:/BaiduNetdiskDownload/UAV_data' 
+    image_dir = "/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone"
 
 
     img_count = 0  
@@ -161,5 +163,10 @@ if __name__ == "__main__":
     cv2.destroyAllWindows()
     # 等待加载线程结束
     load_thread.join()
+
+    t_pose=uav.frames[-1].get_pose()
+    print(t_pose)
+    import tools
+    print(tools.utm_to_latlon(t_pose[0],t_pose[1]))
 
 
