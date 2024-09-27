@@ -62,7 +62,8 @@ class ImageViewer:
             for frame in self.frames:
                 if frame.uv_pose is None:
                     continue
-                pos = frame.uv_pose.copy()
+                pos = frame.uv_pose['translation'].copy()
+                Rotation=frame.uv_pose['rotation']
                 img_top_left = pos
                 img_bottom_right = pos + np.array([3000, 3000])  # 假设图像大小为1000x1000
     
@@ -86,35 +87,44 @@ class ImageViewer:
             for frame in self.frames:
                 if frame.is_active and frame.uv_pose is not None:
                     img = frame.image
-                    pos = frame.uv_pose.copy()
+                    pos = frame.uv_pose['translation'].copy()
+                    rotation_angle = frame.uv_pose['rotation']
+                    
+                    # 计算旋转矩阵
+                    center = (img.shape[1] / 2, img.shape[0] / 2)
+                    rotation_matrix = cv2.getRotationMatrix2D(center, np.degrees(rotation_angle), 1.0)
+                    
+                    # 应用旋转变换
+                    img_rotated = cv2.warpAffine(img, rotation_matrix, (img.shape[1], img.shape[0]))
+                    
                     img_top_left = pos
-                    img_bottom_right = pos + np.array([img.shape[1], img.shape[0]])
-    
+                    img_bottom_right = pos + np.array([img_rotated.shape[1], img_rotated.shape[0]])
+            
                     # 判断图像是否在视图范围内
                     if (img_bottom_right[0] > top_left[0] and img_top_left[0] < bottom_right[0] and
                         img_bottom_right[1] > top_left[1] and img_top_left[1] < bottom_right[1]):
                         view_pos = (pos - top_left) * self.zoom
                         view_pos = view_pos.astype(int)
-    
+            
                         x1 = max(0, view_pos[0])
                         y1 = max(0, view_pos[1])
-                        x2 = min(self.window_size[0], view_pos[0] + int(img.shape[1] * self.zoom))
-                        y2 = min(self.window_size[1], view_pos[1] + int(img.shape[0] * self.zoom))
-    
+                        x2 = min(self.window_size[0], view_pos[0] + int(img_rotated.shape[1] * self.zoom))
+                        y2 = min(self.window_size[1], view_pos[1] + int(img_rotated.shape[0] * self.zoom))
+            
                         img_x1 = max(0, -view_pos[0])
                         img_y1 = max(0, -view_pos[1])
                         img_x2 = img_x1 + (x2 - x1)
                         img_y2 = img_y1 + (y2 - y1)
-    
-                        img_resized = cv2.resize(img, (int(img.shape[1] * self.zoom), int(img.shape[0] * self.zoom)))
-    
+            
+                        img_resized = cv2.resize(img_rotated, (int(img_rotated.shape[1] * self.zoom), int(img_rotated.shape[0] * self.zoom)))
+            
                         self.view[y1:y2, x1:x2] = img_resized[img_y1:img_y2, img_x1:img_x2]
     
             # 在图片之间绘制中线点连线
             for i in range(1, len(self.frames)):
                 if self.frames[i-1].is_active and self.frames[i].is_active and self.frames[i].uv_pose is not None :
-                    pos1 = self.frames[i-1].uv_pose.copy()
-                    pos2 = self.frames[i].uv_pose.copy()
+                    pos1 = self.frames[i-1].uv_pose['translation'].copy()
+                    pos2 = self.frames[i].uv_pose['translation'].copy()
     
                     # 计算中线点
                     mid_point1 = pos1 + np.array([self.frames[i-1].image.shape[1] // 2, self.frames[i-1].image.shape[0] // 2])

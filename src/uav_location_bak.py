@@ -33,8 +33,6 @@ class GlobalMap:
         for i in range(1, len(images)):
             # 检查当前帧的uv_pose是否为None
             if active_frames2[i].uv_pose is  None:
-                active_frames2[i].uv_pose= {'translation':  np.array([0, 0]),
-                    'rotation': 0}
                 # # 获取当前图像和基准图像的特征点
                 keypoints1 = [kp for kp in keypoints_list[i-1] if kp.pyramid_layer == 2]
                 keypoints2 = [kp for kp in keypoints_list[i] if kp.pyramid_layer == 2]
@@ -53,96 +51,54 @@ class GlobalMap:
                 # points1, points2 = xfeat.match_xfeat(images[i-1], images[i], top_k = 4096)
                 
                 # 计算平移并进行图像拼接
-                deta_pose = self.compute_translation_and_rotation(images[i-1], images[i], points1, points2)
-                
-                # 获取前一帧的旋转角度
-                prev_rotation = active_frames2[i-1].uv_pose['rotation']
-                
-                # 计算前一帧的旋转矩阵
-                cos_theta = np.cos(prev_rotation)
-                sin_theta = np.sin(prev_rotation)
-                rotation_matrix = np.array([
-                    [cos_theta, -sin_theta],
-                    [sin_theta, cos_theta]
-                ])
-                
-                # 重新计算平移向量
-                translation_global = rotation_matrix @ (deta_pose['translation']*-9)
-                
-                # 更新当前帧的平移和旋转
-                active_frames2[i].uv_pose['translation'] = translation_global + active_frames2[i-1].uv_pose['translation']
-                # active_frames2[i].uv_pose['rotation'] = deta_pose['rotation'] + active_frames2[i-1].uv_pose['rotation']
+                deta_pose = self.compute_translation_and_warp(images[i-1], images[i], points1, points2)
+                active_frames2[i].uv_pose = deta_pose*9 + active_frames2[i-1].uv_pose
                 print(f"帧{active_frames2[i].object_id}的uv_pose为{active_frames2[i].uv_pose}")
 
-    # # 计算特征点匹配的平移向量
-    # def compute_translation_and_warp(self, img_1, img_2, points1, points2):
-    #     # 只使用前20个匹配点
-    #     # points1 = np.float32(points1[:20]).reshape(-1, 2)
-    #     # points2 = np.float32(points2[:20]).reshape(-1, 2)
-    #      # 只使用前20个匹配点
-    #     points1 = np.float32(points1).reshape(-1, 2)
-    #     points2 = np.float32(points2).reshape(-1, 2)
-        
-    #     # 计算匹配点连线的方向
-    #     directions = []
-    #     for pt1, pt2 in zip(points1, points2):
-    #         direction = np.arctan2(pt2[1] - pt1[1], pt2[0] - pt1[0])
-    #         directions.append(direction)
-        
-    #     # 统计方向分布
-    #     directions = np.array(directions)
-    #     num_bins = 36  # 将方向分成36个区间，每个区间10度
-    #     hist, bin_edges = np.histogram(directions, bins=num_bins)
-        
-    #     # 找出主要方向
-    #     main_direction_idx = np.argmax(hist)
-    #     main_direction = (bin_edges[main_direction_idx] + bin_edges[main_direction_idx + 1]) / 2
-        
-    #     # 删除偏差较大的点
-    #     threshold = np.pi / 18  # 10度的偏差
-    #     filtered_points1 = []
-    #     filtered_points2 = []
-    #     for pt1, pt2, direction in zip(points1, points2, directions):
-    #         if abs(direction - main_direction) <= threshold:
-    #             filtered_points1.append(pt1)
-    #             filtered_points2.append(pt2)
-        
-    #     filtered_points1 = np.array(filtered_points1)
-    #     filtered_points2 = np.array(filtered_points2)
-        
-    #     # 重新计算平移向量
-    #     translation_vector = -1 * np.mean(filtered_points2 - filtered_points1, axis=0)
-
-    #     # 保存平移向量到pose变量
-    #     deta_pose = translation_vector
-        
-    #     return deta_pose
-    # 计算特征点匹配的平移向量和旋转矩阵
-    def compute_translation_and_rotation(self, img_1, img_2, points1, points2):
-        # 将匹配点转换为浮点数并重塑为二维数组
+    # 计算特征点匹配的平移向量
+    def compute_translation_and_warp(self, img_1, img_2, points1, points2):
+        # 只使用前20个匹配点
+        # points1 = np.float32(points1[:20]).reshape(-1, 2)
+        # points2 = np.float32(points2[:20]).reshape(-1, 2)
          # 只使用前20个匹配点
-        points1 = np.float32(points1[:20]).reshape(-1, 2)
-        points2 = np.float32(points2[:20]).reshape(-1, 2)
+        points1 = np.float32(points1).reshape(-1, 2)
+        points2 = np.float32(points2).reshape(-1, 2)
         
-        # 计算仿射变换矩阵
-        matrix, inliers = cv2.estimateAffinePartial2D(points1, points2)
+        # 计算匹配点连线的方向
+        directions = []
+        for pt1, pt2 in zip(points1, points2):
+            direction = np.arctan2(pt2[1] - pt1[1], pt2[0] - pt1[0])
+            directions.append(direction)
         
-        # 提取平移向量
-        translation_vector = matrix[:, 2]
+        # 统计方向分布
+        directions = np.array(directions)
+        num_bins = 36  # 将方向分成36个区间，每个区间10度
+        hist, bin_edges = np.histogram(directions, bins=num_bins)
         
-        # 提取旋转矩阵
-        rotation_matrix = matrix[:, :2]
+        # 找出主要方向
+        main_direction_idx = np.argmax(hist)
+        main_direction = (bin_edges[main_direction_idx] + bin_edges[main_direction_idx + 1]) / 2
         
-        # 计算旋转角度
-        angle = np.arctan2(rotation_matrix[1, 0], rotation_matrix[0, 0])
+        # 删除偏差较大的点
+        threshold = np.pi / 18  # 10度的偏差
+        filtered_points1 = []
+        filtered_points2 = []
+        for pt1, pt2, direction in zip(points1, points2, directions):
+            if abs(direction - main_direction) <= threshold:
+                filtered_points1.append(pt1)
+                filtered_points2.append(pt2)
         
-        # 保存平移向量和旋转角度到pose变量
-        deta_pose = {
-            'translation': translation_vector,
-            'rotation': angle
-        }
+        filtered_points1 = np.array(filtered_points1)
+        filtered_points2 = np.array(filtered_points2)
+        
+        # 重新计算平移向量
+        translation_vector = -1 * np.mean(filtered_points2 - filtered_points1, axis=0)
+
+        # 保存平移向量到pose变量
+        deta_pose = translation_vector
         
         return deta_pose
+
 class UAV_LOCATION:
 
     def __init__(self):
@@ -176,14 +132,14 @@ def load_images(image_dir, viewer, uav):
     for filename in sorted(os.listdir(image_dir)):
         if filename.endswith(".JPG"):
             img_count += 1
-            if img_count > 50:
+            if img_count > 100:
                 break
             path = os.path.join(image_dir, filename)
             uav.read_frame(path)
             # viewer.add_image(path, uav.frames[-1].uv_pose * 9)
             for i in range(len(uav.frames)):
                 if uav.frames[len(uav.frames)-i-1].uv_pose is not None:
-                    viewer.set_camera_pos(uav.frames[len(uav.frames)-i-1].uv_pose['translation'].copy())
+                    viewer.set_camera_pos(uav.frames[len(uav.frames)-i-1].uv_pose.copy())
                     break
             # viewer.set_camera_pos(uav.frames[-1].uv_pose.copy())
 
@@ -191,7 +147,7 @@ def load_images(image_dir, viewer, uav):
 if __name__ == "__main__":
     image_dir = 'D:/Documents/CodeProjects/Aviation-localization/src/' 
     image_dir = 'D:/BaiduNetdiskDownload/UAV_data' 
-    # image_dir = "/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone"
+    image_dir = "/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone"
 
 
     img_count = 0  
@@ -222,7 +178,5 @@ if __name__ == "__main__":
 
     import tools
     print(tools.utm_to_latlon(t_pose[0],t_pose[1]))
-    for i in range(len(uav.frames)):
-        print(f"帧{i}经纬度:{tools.utm_to_latlon(uav.frames[i].get_pose()[0],uav.frames[i].get_pose()[1])}")
 
 
