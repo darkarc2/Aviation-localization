@@ -5,6 +5,8 @@ import time
 from Image_Viewer import ImageViewer
 from Frame_class import Frame, Keypoint, ActiveImage
 import threading
+from modules.xfeat import XFeat
+xfeat = XFeat()
 
 class GlobalMap:
     def __init__(self, active_frames,all_frames,reduced_image=None, observation_frame_id=None,  uav_pose=None, stitched_active_frames=None):
@@ -31,21 +33,22 @@ class GlobalMap:
         for i in range(1, len(images)):
             # 检查当前帧的uv_pose是否为None
             if active_frames2[i].uv_pose is  None:
-                # 获取当前图像和基准图像的特征点
-                keypoints1 = [kp for kp in keypoints_list[i-1] if kp.pyramid_layer == 2]
-                keypoints2 = [kp for kp in keypoints_list[i] if kp.pyramid_layer == 2]
+                # # 获取当前图像和基准图像的特征点
+                # keypoints1 = [kp for kp in keypoints_list[i-1] if kp.pyramid_layer == 2]
+                # keypoints2 = [kp for kp in keypoints_list[i] if kp.pyramid_layer == 2]
                 
-                # 使用BFMatcher进行特征点匹配
-                bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-                descriptors1 = np.array([kp.descriptor for kp in keypoints1])
-                descriptors2 = np.array([kp.descriptor for kp in keypoints2])
+                # # 使用BFMatcher进行特征点匹配
+                # bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+                # descriptors1 = np.array([kp.descriptor for kp in keypoints1])
+                # descriptors2 = np.array([kp.descriptor for kp in keypoints2])
     
-                matches = bf.match(descriptors1, descriptors2)
-                matches = sorted(matches, key=lambda x: x.distance)
+                # matches = bf.match(descriptors1, descriptors2)
+                # matches = sorted(matches, key=lambda x: x.distance)
                 
-                # 获取匹配点
-                points1 = [keypoints1[m.queryIdx].pt for m in matches]
-                points2 = [keypoints2[m.trainIdx].pt for m in matches]
+                # # 获取匹配点
+                # points1 = [keypoints1[m.queryIdx].pt for m in matches]
+                # points2 = [keypoints2[m.trainIdx].pt for m in matches]
+                points1, points2 = xfeat.match_xfeat(images[i-1], images[i], top_k = 4096)
                 
                 # 计算平移并进行图像拼接
                 deta_pose = self.compute_translation_and_warp(images[i-1], images[i], points1, points2)
@@ -55,8 +58,11 @@ class GlobalMap:
     # 计算特征点匹配的平移向量
     def compute_translation_and_warp(self, img_1, img_2, points1, points2):
         # 只使用前20个匹配点
-        points1 = np.float32(points1[:20]).reshape(-1, 2)
-        points2 = np.float32(points2[:20]).reshape(-1, 2)
+        # points1 = np.float32(points1[:20]).reshape(-1, 2)
+        # points2 = np.float32(points2[:20]).reshape(-1, 2)
+         # 只使用前20个匹配点
+        points1 = np.float32(points1).reshape(-1, 2)
+        points2 = np.float32(points2).reshape(-1, 2)
         
         # 计算匹配点连线的方向
         directions = []
@@ -126,7 +132,7 @@ def load_images(image_dir, viewer, uav):
     for filename in sorted(os.listdir(image_dir)):
         if filename.endswith(".JPG"):
             img_count += 1
-            if img_count > 8:
+            if img_count > 100:
                 break
             path = os.path.join(image_dir, filename)
             uav.read_frame(path)
@@ -165,7 +171,11 @@ if __name__ == "__main__":
     load_thread.join()
 
     t_pose=uav.frames[-1].get_pose()
-    print(t_pose)
+    print("utm_POS",t_pose)
+
+    for i in range(len(uav.frames)):
+        print(f"帧{i}uv_pose:{uav.frames[i].uv_pose_to_pose_in_camera()}")
+
     import tools
     print(tools.utm_to_latlon(t_pose[0],t_pose[1]))
 

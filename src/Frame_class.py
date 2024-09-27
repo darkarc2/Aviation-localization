@@ -24,6 +24,8 @@ class Frame:
         Frame._id_counter += 1
         if self.object_id == 0:
             self.uv_pose = np.array([0, 0])
+        # if self.object_id ==1:
+        #     self.uv_pose = np.array([-171, -860])
 
     # 生成图像金字塔,levels表示金字塔层数
     def generate_pyramid(self, image, levels=3):
@@ -55,7 +57,7 @@ class Frame:
     def update_uv_pose(self, uav_pose):
         # 更新位姿在图像上的像素坐标的逻辑
         self.uv_pose = uav_pose
-    def uv_pose_to_pose_in_camera(self,uv_pose):
+    def uv_pose_to_pose_in_camera(self):
         a=7952/35.9
         b=5304/24
         f=35
@@ -67,7 +69,7 @@ class Frame:
         ])
 
         # 相机坐标系下各图片中心点
-        pose_in_camera=uv_pose+np.array([3976,2652]) #把像素坐标转到图片中心下的坐标
+        pose_in_camera=self.uv_pose+np.array([3976,2652]) #把像素坐标转到图片中心下的坐标
         pose_in_camera=np.array([pose_in_camera[0],pose_in_camera[1],1]) #转为齐次坐标
 
         k_inv=np.linalg.inv(K)
@@ -83,7 +85,7 @@ class Frame:
             [-0.20323996,-0.19471799, 0.959572  ]])
         t=np.array([ 772767.90754028,3577889.15665317, 0])
 
-        pose_in_camera=self.uv_pose_to_pose_in_camera(self.uv_pose)
+        pose_in_camera=self.uv_pose_to_pose_in_camera()
         self.pose=R@(pose_in_camera)+t #计算UTM坐标下的飞机位姿
         return self.pose
 
