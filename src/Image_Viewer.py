@@ -84,19 +84,24 @@ class ImageViewer:
             # 创建黑色背景
             self.view.fill(0)
             # 渲染活动图像
-            for frame in self.frames:
+            for i, frame in enumerate(self.frames):
                 if frame.is_active and frame.uv_pose is not None:
                     img = frame.image
                     pos = frame.uv_pose['translation'].copy()
                     rotation_angle = frame.uv_pose['rotation']
-                    
+                    # homography_matrix = frame.uv_pose.get('Homography')
+            
                     # 计算旋转矩阵
                     center = (img.shape[1] / 2, img.shape[0] / 2)
-                    rotation_matrix = cv2.getRotationMatrix2D(center, np.degrees(rotation_angle), 1.0)
-                    
+                    rotation_matrix = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
+            
                     # 应用旋转变换
                     img_rotated = cv2.warpAffine(img, rotation_matrix, (img.shape[1], img.shape[0]))
-                    
+            
+                    # # 如果存在单应矩阵，应用单应变换
+                    # if homography_matrix is not None and i > 0:
+                    #     img_rotated = cv2.warpPerspective(img_rotated, homography_matrix, (img.shape[1], img.shape[0]))
+            
                     img_top_left = pos
                     img_bottom_right = pos + np.array([img_rotated.shape[1], img_rotated.shape[0]])
             
@@ -118,51 +123,41 @@ class ImageViewer:
             
                         img_resized = cv2.resize(img_rotated, (int(img_rotated.shape[1] * self.zoom), int(img_rotated.shape[0] * self.zoom)))
             
-                        self.view[y1:y2, x1:x2] = img_resized[img_y1:img_y2, img_x1:img_x2]
-    
+                        # 获取要赋值的区域
+                        region_to_assign = img_resized[img_y1:img_y2, img_x1:img_x2]
+
+                        # 创建一个布尔掩码，标记哪些像素不是纯黑色
+                        mask = np.any(region_to_assign != 0, axis=-1)
+
+                        # 使用掩码进行赋值操作
+                        self.view[y1:y2, x1:x2][mask] = region_to_assign[mask]
+            
             # 在图片之间绘制中线点连线
             for i in range(1, len(self.frames)):
-                if self.frames[i-1].is_active and self.frames[i].is_active and self.frames[i].uv_pose is not None :
+                if self.frames[i-1].is_active and self.frames[i].is_active and self.frames[i].uv_pose is not None:
                     pos1 = self.frames[i-1].uv_pose['translation'].copy()
                     pos2 = self.frames[i].uv_pose['translation'].copy()
-    
+            
                     # 计算中线点
                     mid_point1 = pos1 + np.array([self.frames[i-1].image.shape[1] // 2, self.frames[i-1].image.shape[0] // 2])
                     mid_point2 = pos2 + np.array([self.frames[i].image.shape[1] // 2, self.frames[i].image.shape[0] // 2])
-    
+            
                     # 转换到视图坐标
                     view_mid_point1 = (mid_point1 - top_left) * self.zoom
                     view_mid_point2 = (mid_point2 - top_left) * self.zoom
-    
+            
                     view_mid_point1 = view_mid_point1.astype(int)
                     view_mid_point2 = view_mid_point2.astype(int)
-    
+            
                     # 绘制连线
                     cv2.line(self.view, tuple(view_mid_point1), tuple(view_mid_point2), (0, 255, 0), 2)
-    
+            
             # 添加相机位置文本
             cv2.putText(self.view, f'Camera Pos: {self.camera_pos}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
-    
+            
             # 添加相机位置文本
             cv2.putText(self.view, "press esc to exit", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
-    # def show_trajectory(self):
-    #     # 绘制轨迹
-    #     for i in range(1, len(self.frames)):
-    #         cv2.line(self.view, self.frames[i-1]["pos"], self.frames[i]["pos"], (0, 255, 0), 2)
-
-    # def show(self):
-
-    #     while True:
-    #         # 显示图像
-    #         cv2.imshow('Image Viewer', self.view)
-    #         # 退出条件
-    #         if cv2.waitKey(1) & 0xFF == 27:  # 按下ESC键退出
-    #             break
-    #     cv2.destroyAllWindows()
-    # def start(self):
-    #     t=threading.Thread(target=self.show)
-    #     t.start()
 
 
 

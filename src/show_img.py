@@ -108,8 +108,8 @@ class ImageViewer:
             # 动态加载和卸载图像
             for image in self.images:
                 pos = image['pos']
-                img_top_left = pos
-                img_bottom_right = pos + np.array([1000, 1000])  # 假设图像大小为1000x1000
+                img_top_left = pos[:2]
+                img_bottom_right = pos[:2] + np.array([1000, 1000])  # 假设图像大小为1000x1000
 
                 # 判断图像是否在视图范围内
                 if (img_bottom_right[0] > extended_top_left[0] and img_top_left[0] < extended_bottom_right[0] and
@@ -128,26 +128,33 @@ class ImageViewer:
                 if image['is_active']:
                     img = image['img']
                     pos = image['pos']
-                    img_top_left = pos
-                    img_bottom_right = pos + np.array([img.shape[1], img.shape[0]])
+                    angle = pos[2]  # 获取旋转角度
+                    img_top_left = pos[:2]
+                    img_bottom_right = pos[:2] + np.array([img.shape[1], img.shape[0]])
 
                     # 判断图像是否在视图范围内
                     if (img_bottom_right[0] > top_left[0] and img_top_left[0] < bottom_right[0] and
                         img_bottom_right[1] > top_left[1] and img_top_left[1] < bottom_right[1]):
-                        view_pos = (pos - top_left) * self.zoom
+                        view_pos = (pos[:2] - top_left) * self.zoom
                         view_pos = view_pos.astype(int)
+
+                        # 计算旋转中心和旋转矩阵
+                        center = (img.shape[1] // 2, img.shape[0] // 2)
+                        rot_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+                        img_rotated = cv2.warpAffine(img, rot_matrix, (img.shape[1], img.shape[0]))
+
+                        # 缩放图像
+                        img_resized = cv2.resize(img_rotated, (int(img.shape[1] * self.zoom), int(img.shape[0] * self.zoom)))
 
                         x1 = max(0, view_pos[0])
                         y1 = max(0, view_pos[1])
-                        x2 = min(self.window_size[0], view_pos[0] + int(img.shape[1] * self.zoom))
-                        y2 = min(self.window_size[1], view_pos[1] + int(img.shape[0] * self.zoom))
+                        x2 = min(self.window_size[0], view_pos[0] + img_resized.shape[1])
+                        y2 = min(self.window_size[1], view_pos[1] + img_resized.shape[0])
 
                         img_x1 = max(0, -view_pos[0])
                         img_y1 = max(0, -view_pos[1])
                         img_x2 = img_x1 + (x2 - x1)
                         img_y2 = img_y1 + (y2 - y1)
-
-                        img_resized = cv2.resize(img, (int(img.shape[1] * self.zoom), int(img.shape[0] * self.zoom)))
 
                         view[y1:y2, x1:x2] = img_resized[img_y1:img_y2, img_x1:img_x2]
 
@@ -174,11 +181,14 @@ if __name__ == "__main__":
     viewer = ImageViewer()
 
 
-    viewer.add_image("./03_0001.JPG", np.array([0, 0]))
-    viewer.add_image("./03_0002.JPG", np.array([-19.02805901*9, -98.53948212*9]))
-    viewer.add_image("./03_0003.JPG", np.array([1000, -1000]))
-    viewer.add_image("./03_0004.JPG", np.array([-10000, -1000]))
-    viewer.add_line( [0, 0],[1000, 5000], (0, 255, 0))
+    viewer.add_image("/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/03_0244.JPG", np.array([0, 0,0]))
+    # viewer.add_image("/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/03_0053.JPG", np.array([-213.92524792,-808.49323945,-1.75539]))
+    # viewer.add_image("/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/03_0053.JPG", np.array([-200,-790,-3]))
+    viewer.add_image("/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/03_0245.JPG", np.array([-232.95030331, -857.97712893,0]))
+    viewer.add_image("/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/03_0246.JPG", np.array([ -382.54631585, -1706.48444968,0]))
+    # viewer.add_image("./03_0003.JPG", np.array([1000, -1000]))
+    # viewer.add_image("./03_0004.JPG", np.array([-10000, -1000]))
+    # viewer.add_line( [0, 0],[1000, 5000], (0, 255, 0))
 
     # ============这里是一个加载文件夹中所有图像的例子================
     # image_dir = 'D:/Dataset/UAV_VisLoc_dataset/03/drone/'

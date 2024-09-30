@@ -26,6 +26,7 @@ class Frame:
             # self.uv_pose = np.array([0, 0])
             self.uv_pose = {'translation':  np.array([0, 0]),
                     'rotation': 0}
+            # self.pose=np.array([772767.9075402762,3577889.1566531677])
         # if self.object_id ==1:
         #     self.uv_pose = np.array([-171, -860])
 
@@ -79,17 +80,42 @@ class Frame:
 
         return pose_in_camera
 
+    # def get_pose(self):
+    #     # 把第一张图片的位置作为原点，可以得到t
+    #     # 结合第二张图片的位置，可以得到R
+    #     # R=np.array([[ 0.29141993, 0.59166006,-0.75167333],
+    #     #     [ 0.3797174, 0.64967385,0.65858833],
+    #     #     [ 0.87800292,-0.47734921,-0.03533571]])
+    #     # t=np.array([772767.9075402762,3577889.1566531677, 0])
+    #     R=np.array([[ 0.94229276, 0.02862424, 0.3335641 ],
+    #     [-0.33474439, 0.06410555, 0.94012588],
+    #     [ 0.00552708,-0.99753252, 0.069988  ]])
+    #     t=np.array([ 772767.90754028,3577889.15665317, 0])
+    #     pose_in_camera=self.uv_pose_to_pose_in_camera()
+    #     pose_in_camera[2]=0
+    #     self.pose=R@(pose_in_camera)+t #计算UTM坐标下的飞机位姿
+    #     return self.pose
+    # 验证函数
+    def transform_point(self,u, v):
+        a,b,c,d=-0.024339612852506524, 0.09639987552971423,0.02283516200259328, -0.06977090383329672
+        e,f=768562.1758137619, 3580349.1592050353
+        x = a * u + b * v 
+        y = c * u + d * v 
+        return np.array([x, y,0])
     def get_pose(self):
-        # 把第一张图片的位置作为原点，可以得到t
-        # 结合第二张图片的位置，可以得到R
-        R=np.array([[-0.48546517,-0.83104347,-0.27145961],
-            [ 0.85030412,-0.52101022, 0.07437244],
-            [-0.20323996,-0.19471799, 0.959572  ]])
-        t=np.array([ 772767.90754028,3577889.15665317, 0])
-
-        pose_in_camera=self.uv_pose_to_pose_in_camera()
-        self.pose=R@(pose_in_camera)+t #计算UTM坐标下的飞机位姿
+        # k_u=0.5019073578250858
+        # k_v=-0.06402784482176178
+        # k=0.10617319833859862
+        # dx=self.uv_pose['translation'][0]*k
+        # dy=self.uv_pose['translation'][1]*k
+        # R=np.array([[-0.34378516, 0.93904833],
+        #     [-0.93904833,-0.34378516]])
+        # pose=R@np.array([dx,dy])
+        # self.pose=np.array([pose[0],pose[1],0])
+        self.pose=self.transform_point(self.uv_pose['translation'][0],self.uv_pose['translation'][1])
         return self.pose
+    # def get_pose(self):
+    #     return self.pose
 
 class Keypoint:
     def __init__(self, pt, pyramid_layer, associated_image, descriptor, is_anomalous=False):

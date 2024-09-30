@@ -12,10 +12,14 @@ lat1, lon1 = 32.30462673, 119.8968847
 lat2, lon2 = 32.30513666, 119.8960711
 lat3, lon3=32.30566378,119.8952804
 
+lat4, lon4=32.32936131,119.8505553
+
 # 将经纬度坐标转换为UTM坐标
 x1, y1 = pyproj.transform(wgs84, utm, lon1, lat1)
 x2, y2 = pyproj.transform(wgs84, utm, lon2, lat2)
 x3, y3 = pyproj.transform(wgs84, utm, lon3, lat3)
+x4, y4 = pyproj.transform(wgs84, utm, lon4, lat4)
+
 
 # 计算两个点之间的平面距离
 distance = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
@@ -23,6 +27,7 @@ distance = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
 print(f"点1的UTM坐标: ({x1}, {y1})")
 print(f"点2的UTM坐标: ({x2}, {y2})")
 print(f"点3的UTM坐标: ({x3}, {y3})")
+print(f"点4的UTM坐标: ({x4}, {y4})")
 # 计算ENU坐标
 dx = x2 - x1
 dy = y2 - y1
@@ -39,72 +44,81 @@ print(f"两个点之间的平面距离: {distance:.2f} 米")
 
 
 
-uv_pose1=np.array([3976,2652,1]) #图1的中心点
-uv_pose2=np.array([-171.25253296,-886.85534668,0])+uv_pose1  #uv_pose2是uv_pose1的相对坐标
-uv_pose3=np.array([ -238.22377014,-1665.41070557,0])+uv_pose1 #uv_pose3是uv_pose1的相对坐标
-
-#相机模型测试
-
-a=7952/35.9
-b=5304/24
-f=35
-
-K = np.array([
-    [f*a, 0, 3976],
-    [0, f*b, 2652],
-    [0, 0, 1]
-])
-
-# 相机坐标系下各图片中心点
-k_inv=np.linalg.inv(K)
-pose1_in_camera=466*k_inv@(uv_pose1)
-pose2_in_camera=466*k_inv@(uv_pose2)
-pose3_in_camera=466*k_inv@(uv_pose3)
-print("=========相机坐标系下各图片中心点::=============")
-print(f"pose1_in_camera为{pose1_in_camera}")
-print(f"pose2_in_camera为{pose2_in_camera}")
-print(f"pose3_in_camera为{pose3_in_camera}")
-print("=========下面开始求解R，t::=============")
-
-
-# 把第一张图片的中心点转到世界坐标系下，假设其在相机坐标系下的坐标为(0,0,446)
-# Pwc=R@pc+t  ，@表示矩阵乘法
-# 则很容易得到t=(x1,y1,0)
-t=np.array([x1,y1,0])
-
-#接下来要求R
-# Pwc-t=R@pc
-#这里就用第二张图片来求解R
-# np.array(x2, y2,446)-t =R@pose1_in_camera
-
-# 定义两个点的坐标
-p = np.array([x2, y2,466])-t
-print(f"Pwc-t为{p}")
-# Pwc-t为[-78.16504048  54.48358478 466.        ]
-
-# 计算旋转矩阵
-rotation, _ = R.align_vectors([p], [pose2_in_camera])
-
-# 打印旋转矩阵
-print("旋转矩阵为：")
-print(rotation.as_matrix())
-print("t为：")
-print(t)
-#验证
-print("验证结果为：")
-print("Pwc-t为",rotation.as_matrix()@pose2_in_camera)
+uv_pose1=np.array([3976//2,2652//2,1]) #图1的中心点
+# uv_pose2=np.array([-171.25253296,-886.85534668,0])+uv_pose1  #uv_pose2是uv_pose1的相对坐标
+# uv_pose3=np.array([ -238.22377014,-1665.41070557,0])+uv_pose1 #uv_pose3是uv_pose1的相对坐标
+uv_pose2=np.array([-155.73599243, -850.93579102,0])+uv_pose1  #uv_pose2是uv_pose1的相对坐标
+uv_pose3=np.array([ -220.69548035, -1619.29162598,0])+uv_pose1 #uv_pose3是uv_pose1的相对坐标
 
 
 
-R=np.array([[-0.48546517,-0.83104347,-0.27145961],
- [ 0.85030412,-0.52101022, 0.07437244],
- [-0.20323996,-0.19471799, 0.959572  ]])
-t=np.array([ 772767.90754028,3577889.15665317, 0])
-#验证
-print("图三utm坐标为，真值",x3,y3,466)
-print("图三utm坐标为，计算",R@pose3_in_camera+t)
-# print("图1utm坐标为，真值",x1,y1,466)
-# print("图1utm坐标为，计算",R@pose1_in_camera+t)
+
+
+
+
+# #相机模型测试
+
+# a=3976/35.9
+# b=2652/24
+# f=35
+
+# K = np.array([
+#     [f*a, 0, 3976//2],
+#     [0, f*b, 2652//2],
+#     [0, 0, 1]
+# ])
+
+# # 相机坐标系下各图片中心点
+# k_inv=np.linalg.inv(K)
+# pose1_in_camera=466*k_inv@(uv_pose1)
+# pose2_in_camera=466*k_inv@(uv_pose2)
+# pose3_in_camera=466*k_inv@(uv_pose3)
+# print("=========相机坐标系下各图片中心点::=============")
+# print(f"pose1_in_camera为{pose1_in_camera}")
+# print(f"pose2_in_camera为{pose2_in_camera}")
+# print(f"pose3_in_camera为{pose3_in_camera}")
+# print("=========下面开始求解R，t::=============")
+
+
+# # 把第一张图片的中心点转到世界坐标系下，假设其在相机坐标系下的坐标为(0,0,446)
+# # Pwc=R@pc+t  ，@表示矩阵乘法
+# # 则很容易得到t=(x1,y1,0)
+# t=np.array([x1,y1,0])
+
+# #接下来要求R
+# # Pwc-t=R@pc
+# #这里就用第二张图片来求解R
+# # np.array(x2, y2,446)-t =R@pose1_in_camera
+
+# # 定义两个点的坐标
+# p = np.array([x2, y2,466])-t
+# print(f"Pwc-t为{p}")
+# # Pwc-t为[-78.16504048  54.48358478 466.        ]
+
+# # 计算旋转矩阵
+# rotation, _ = R.align_vectors([p], [pose2_in_camera])
+
+# # 打印旋转矩阵
+# print("旋转矩阵为：")
+# print(rotation.as_matrix())
+# print("t为：")
+# print(t)
+# #验证
+# print("验证结果为：")
+# print("Pwc-t为",rotation.as_matrix()@pose2_in_camera)
+
+
+
+# R=np.array([[ 0.94229276, 0.02862424, 0.3335641 ],
+#  [-0.33474439, 0.06410555, 0.94012588],
+#  [ 0.00552708,-0.99753252, 0.069988  ]])
+# R=rotation.as_matrix()
+# t=np.array([ 772767.90754028,3577889.15665317, 466])
+# #验证
+# print("图三utm坐标为，真值",x3,y3,0)
+# print("图三utm坐标为，计算",R@pose3_in_camera+t)
+# # print("图1utm坐标为，真值",x1,y1,466)
+# # print("图1utm坐标为，计算",R@pose1_in_camera+t)
 
 
 # 定义一个函数将UTM坐标转换回经纬度坐标
@@ -121,8 +135,28 @@ def utm_to_latlon(x, y, zone=50):
 
 
 print("图三的经纬度坐标为，真值",utm_to_latlon(x3, y3))
-p3=R@pose3_in_camera+t
-print("图三的经纬度坐标为，计算",utm_to_latlon(p3[0],p3[1]))
+# p3=R@pose3_in_camera+t
+# print("图三的经纬度坐标为，计算",utm_to_latlon(p3[0],p3[1]))
+
+deta_u=uv_pose2-uv_pose1
+deta_x=x2-x1
+deta_y=y2-y1
+k_u=deta_x/deta_u[0]
+k_v=deta_y/deta_u[1]
+print(f"k_u为{k_u},k_v为{k_v}")
+
+
+k_u=0.5019073578250858
+k_v=-0.06402784482176178
+pose3=uv_pose3-uv_pose1
+pose3=np.array([pose3[0]*k_u,pose3[1]*k_v])
+pose3=pose3+np.array([x1,y1])
+print("图三的经纬度坐标为，计算",utm_to_latlon(pose3[0],pose3[1]))
+print("图三的经纬度坐标为，真值",utm_to_latlon(x3, y3))
+dist=((pose3[0]-x3)**2+(pose3[1]-y3)**2)**0.5
+print(f"误差为{dist}米")
+
+
 
 
 
