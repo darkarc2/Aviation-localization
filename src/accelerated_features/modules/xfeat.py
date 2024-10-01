@@ -11,8 +11,8 @@ import torch.nn.functional as F
 
 import tqdm
 
-from modules.model import *
-from modules.interpolator import InterpolateSparse2d
+from accelerated_features.modules.model import *
+from accelerated_features.modules.interpolator import InterpolateSparse2d
 
 class XFeat(nn.Module):
 	""" 
@@ -141,7 +141,7 @@ class XFeat(nn.Module):
 		if not self.kornia_available:
 			raise RuntimeError('We rely on kornia for LightGlue. Install with: pip install kornia')
 		elif self.lighterglue is None:
-			from modules.lighterglue import LighterGlue
+			from accelerated_features.modules.lighterglue import LighterGlue
 			self.lighterglue = LighterGlue()
 
 		data = {

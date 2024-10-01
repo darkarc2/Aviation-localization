@@ -65,7 +65,7 @@ class ImageViewer:
                 pos = frame.uv_pose['translation'].copy()
                 Rotation=frame.uv_pose['rotation']
                 img_top_left = pos
-                img_bottom_right = pos + np.array([3000, 3000])  # 假设图像大小为1000x1000
+                img_bottom_right = pos + np.array([8000, 8000])  # 假设图像大小为1000x1000
     
                 # 判断图像是否在视图范围内
                 if (img_bottom_right[0] > extended_top_left[0] and img_top_left[0] < extended_bottom_right[0] and
@@ -73,13 +73,13 @@ class ImageViewer:
                     if not frame.is_active:
                         # frame.image = cv2.imread(frame.image_path)  # 加载图像
                         # frame.is_active = True
-                        print('Load image:', frame.image_path)
-                        self.uav.active_frames.reactivate_frame(frame)
+                        # print('Load image:', frame.image_path)
+                        frame.reactivate_frame(frame)
                 else:
-                    if frame.is_active:
+                    if frame.is_active and (not frame in self.uav.active_frames.frames):
                         # frame.image = None  # 卸载图像
                         # frame.is_active = False
-                        self.uav.active_frames.remove_frame(frame)
+                        frame.remove_frame(frame)
     
             # 创建黑色背景
             self.view.fill(0)

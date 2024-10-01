@@ -3,3 +3,6 @@ __pycache__
 /accelerated_features
 /wildnav
 bad_imgs
+src/wildnav/assets
+wildnav.7z
+src/wildnav/src/superglue_lib

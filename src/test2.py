@@ -63,6 +63,8 @@ viewer = ImageViewer()
 
 img1_path='/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/03_0240.JPG'
 img2_path='/mnt/d/Dataset/UAV_VisLoc_dataset/03/drone/03_0241.JPG'
+img1_path='/home/arc/works/review_prj/UAV_slam/wildnav/assets/map/1_query_image.png'
+img2_path='/home/arc/works/review_prj/UAV_slam/wildnav/assets/map/sat_map_298.png'
 
 # 读取图像
 img1 = cv2.imread(img1_path)
@@ -73,26 +75,26 @@ img2 = cv2.imread(img2_path)
 # keypoints1 = [cv2.KeyPoint(p[0], p[1], 5) for p in points1]
 # keypoints2 = [cv2.KeyPoint(p[0], p[1], 5) for p in points2]
 # Inference with batch = 1
-# import time
-# start = time.time()
-# output0 = xfeat.detectAndCompute(img1, top_k = 1024)[0]
-# output1 = xfeat.detectAndCompute(img2, top_k = 1024)[0]
+import time
+start = time.time()
+output0 = xfeat.detectAndCompute(img1, top_k = 1024)[0]
+output1 = xfeat.detectAndCompute(img2, top_k = 1024)[0]
 
-# #Update with image resolution (required)
-# output0.update({'image_size': (img1.shape[1], img1.shape[0])})
-# output1.update({'image_size': (img2.shape[1], img2.shape[0])})
-# points1, points2 = xfeat.match_lighterglue(output0, output1)
-# end = time.time()
-# print("time:",end-start)
+#Update with image resolution (required)
+output0.update({'image_size': (img1.shape[1], img1.shape[0])})
+output1.update({'image_size': (img2.shape[1], img2.shape[0])})
+points1, points2 = xfeat.match_lighterglue(output0, output1)
+end = time.time()
+print("time:",end-start)
 # # orb匹配特征点
-orb = cv2.ORB_create()
-points1, descriptors1 = orb.detectAndCompute(img1, None)
-points2, descriptors2 = orb.detectAndCompute(img2, None)
-matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-matches = matcher.match(descriptors1, descriptors2)
-matches = sorted(matches, key=lambda x: x.distance)
-points1 = np.array([points1[m.queryIdx].pt for m in matches[:20]])
-points2 = np.array([points2[m.trainIdx].pt for m in matches[:20]])
+# orb = cv2.ORB_create()
+# points1, descriptors1 = orb.detectAndCompute(img1, None)
+# points2, descriptors2 = orb.detectAndCompute(img2, None)
+# matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+# matches = matcher.match(descriptors1, descriptors2)
+# matches = sorted(matches, key=lambda x: x.distance)
+# points1 = np.array([points1[m.queryIdx].pt for m in matches[:20]])
+# points2 = np.array([points2[m.trainIdx].pt for m in matches[:20]])
 
 # 计算旋转矩阵和质心
 theta, t = gauss_newton_rotation(points1, points2)

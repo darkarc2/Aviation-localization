@@ -3,7 +3,7 @@ import numpy as np
 import csv
 
 #经纬度坐标转换为UTM坐标
-def latlon_to_utm(lon, lat, zone=50):
+def latlon_to_utm(lat,lon, zone=50):
     wgs84 = pyproj.CRS('EPSG:4326')  # 定义WGS84坐标系
     utm = pyproj.CRS(f'EPSG:326{zone}')  # 定义UTM坐标系
     transformer = pyproj.Transformer.from_crs(wgs84, utm, always_xy=True)
@@ -41,12 +41,21 @@ def read_csv(file_path):
             })
     return frames
 
+def get_true_pose(csv_path):
+    frames = read_csv(csv_path)
+    true_pose=[]
+    for i in range(len(frames)):
+        frame = frames[i]
+        frame_utm_x, frame_utm_y = latlon_to_utm(frame['lat'],frame['lon'])
+        true_pose.append([frame['lat'],frame['lon'],frame_utm_x,frame_utm_y])
+    return true_pose
+
 def calculate_errors(frames, uav):
     errors = []
     start_num = 0
     frames = frames[start_num:]
-    start_pose_utm = list(latlon_to_utm(frames[0]['lon'],frames[0]['lat']))
-    end_pose_utm = list(latlon_to_utm(frames[len( uav.frames)]['lon'],frames[len( uav.frames)]['lat']))
+    start_pose_utm = list(latlon_to_utm(frames[0]['lat'],frames[0]['lon']))
+    end_pose_utm = list(latlon_to_utm(frames[len( uav.frames)]['lat'],frames[len( uav.frames)]['lon']))
     for i in range(len( uav.frames)):
         frame = frames[i]
         uav_pose = uav.frames[i].get_pose()
@@ -56,8 +65,8 @@ def calculate_errors(frames, uav):
         lat_error = frame['lat'] - uav_lat
         lon_error = frame['lon'] - uav_lon
         
-        frame_utm_x, frame_utm_y = latlon_to_utm(frame['lon'],frame['lat'])
-        uav_utm_x, uav_utm_y = latlon_to_utm(uav_lon,uav_lat)
+        frame_utm_x, frame_utm_y = latlon_to_utm(frame['lat'],frame['lon'])
+        uav_utm_x, uav_utm_y = latlon_to_utm(uav_lat,uav_lon)
         
         distance_error = ((frame_utm_x - uav_utm_x) ** 2 + (frame_utm_y - uav_utm_y) ** 2) ** 0.5
         
