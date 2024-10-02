@@ -5,6 +5,7 @@ import time
 from Image_Viewer import ImageViewer
 from Frame_class import Frame, ActiveImage
 import threading
+import csv
 from accelerated_features.modules.xfeat import XFeat
 import tools    
 from wildnav.src.Global_position import GeoLocator
@@ -95,8 +96,7 @@ class GlobalMap:
             'Homography': None}
         
 
-        # 法1===============
-        # points1, points2 = xfeat.match_xfeat(last_frame.image, now_frame.image, top_k = 4000)
+
 
 
         # 法2===============
@@ -118,6 +118,9 @@ class GlobalMap:
         output0.update({'image_size': (last_frame.image.shape[1], last_frame.image.shape[0])})
         output1.update({'image_size': (now_frame.image.shape[1], now_frame.image.shape[0])})
         points1, points2 = xfeat.match_lighterglue(output0, output1)
+        if len(points1)==0:
+            # 法1===============
+            points1, points2 = xfeat.match_xfeat(last_frame.image, now_frame.image, top_k = 4000)
         # 计算平移并进行图像拼接
         deta_pose = self.compute_translation_and_rotation(last_frame.image, now_frame.image, points1, points2)
         
@@ -237,6 +240,8 @@ def load_images(image_dir, viewer, uav):
                 #     if process_lock.acquire(False):  # 非阻塞锁定
                 if flag_is_finish:
                         multiprocessing.Process(target=locate_image_in_background, args=(uav, suspected_pose, delta_pose, start_pose_utm, frame_index,update_queue)).start()
+                # while flag_is_finish == False:
+                #     time.sleep(0.1)
 
                 # location=uav.map.geo_locator.locate_image(uav.frames[-1].image,suspected_pose, delta_pose)
                 # if location is not None:
@@ -258,10 +263,34 @@ def load_images(image_dir, viewer, uav):
                 if uav.frames[len(uav.frames)-i-1].uv_pose is not None:
                     viewer.set_camera_pos(uav.frames[len(uav.frames)-i-1].uv_pose['translation'].copy())
                     break
+                # 显示图像
+        viewer.run()
+        cv2.imshow('Image Viewer', viewer.view)
+        # 退出条件
+        cv2.waitKey(1) 
 
 
 
-
+def calculate_uav_positions(frames, uav,errors):
+    uav_positions = []
+    start_num = 0
+    frames = frames[start_num:]
+    start_pose_utm = list(tools.latlon_to_utm(frames[0]['lat'], frames[0]['lon']))
+    
+    for i in range(len(uav.frames)):
+        frame = frames[i]
+        uav_pose = uav.frames[i].get_pose()
+        uav_pose = uav_pose[0:2] + np.array(start_pose_utm)
+        uav_lat, uav_lon = tools.utm_to_latlon(uav_pose[0], uav_pose[1])
+        
+        uav_positions.append({
+            'frame_num': frame['num'],
+            'uav_lat': uav_lat,
+            'uav_lon': uav_lon,
+            'error': errors[i]['distance_error']
+        })
+    
+    return uav_positions
 def print_data(uav):
     
     frames = tools.read_csv(csv_file_path)
@@ -272,6 +301,16 @@ def print_data(uav):
     
     for error in errors:
         print(f"帧{error['frame_num']} - 纬度误差: {error['lat_error']}, 经度误差: {error['lon_error']}, 距离误差: {error['distance_error']}米")
+     # 保存UAV位置数据到CSV文件
+     # 假设uav对象已经定义并包含frames
+    uav_positions = calculate_uav_positions(frames, uav,errors)
+    with open('/home/arc/works/review_prj/UAV_slam/src/uav_track.csv', 'w', newline='') as csvfile:
+        fieldnames = ['frame_num', 'uav_lat', 'uav_lon','error']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        
+        writer.writeheader()
+        for position in uav_positions:
+            writer.writerow(position)
 
 
 if __name__ == "__main__":

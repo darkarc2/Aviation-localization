@@ -14,7 +14,7 @@ import requests
 ############################################################################################
 
 # Path to the folder where the map will be saved
-MAP_PATH = "../assets/maps/map_2/"
+MAP_PATH = "D:/Temp_can_delete/map_2/"
 class FlightZone:
     """A rectangle shaped flight area defined by 2 points (latitudes and longitudes)"""
     def __init__(self, top_left_lat, top_left_lon,\
@@ -52,7 +52,7 @@ def csv_write_image_location():
 # These 2 variables determine the number of images that form the map
 
 #define as a pair of coordinates determining a rectangle in which the satellite photos will be taken
-flight_zone = FlightZone(60.408615, 22.460445, 60.400855, 22.471289)
+flight_zone = FlightZone(32.3531,119.8250, 32.2873,119.8923)
 
 #define as height (latitude) and width (longitude) of the patch to be taken
 patch_size = PatchSize(0.001676, 0.00341)
@@ -87,7 +87,7 @@ size = "640x640"  # maximum allowed size
 maptype = "satellite"
 scale = "2" # maximum allowed scale
 #restricted by IP address, so you will have to generate your own
-API_KEY = "AIzaSyAclBCbWo0rwQIaezGcXM6X3S_Otv-hHOQ"
+API_KEY = "AIzaSyAkmvI9DazzG9p77IShsz_Di7-5Qn7zkcg"
 
 URL = "https://maps.googleapis.com/maps/api/staticmap?" # base URL for the Google Maps API
 
@@ -102,6 +102,7 @@ PARAMS = {'center':center,
 
 photo_list = [] # list of all the photos that will be downloaded
 index = 0 # index of the current image
+proxy = {'http': '127.0.0.1:10809', 'https': '127.0.0.1:10809'}
 
 # build map by downloading and stitching together satellite images
 for i in range(0, height):
@@ -109,7 +110,7 @@ for i in range(0, height):
         photo_name = 'sat_patch' + '_' + f"{index:04d}"+ '.png'
 
         #send GET request to the API which returns a satellite image upon success
-        r = requests.get(url = URL, params = PARAMS, stream=True, timeout=10)
+        r = requests.get(url = URL, params = PARAMS, stream=True, timeout=10,proxies=proxy)
 
 
         # if request successful, write image to file
