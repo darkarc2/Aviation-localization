@@ -215,8 +215,8 @@ def match_image(map_path):
             #stem = 'matches_{:06}_{:06}'.format(last_image_id, vs.i-1)
             stem = 'matches_{:06}_{:06}'.format(stem0, stem1)
             out_file = str(Path(output_dir, stem + '.png'))
-            # print('\nWriting image to {}'.format(out_file))
-            # cv2.imwrite(out_file, out)
+            print('\nWriting image to {}'.format(out_file))
+            cv2.imwrite(out_file, out)
 
 
     # cv2.destroyAllWindows()

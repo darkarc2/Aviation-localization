@@ -5,7 +5,7 @@ import haversine as hs
 from haversine import Unit
 
 import sys
-sys.path.append('../src/')
+sys.path.append('../src')
 import superglue_utils
 
 

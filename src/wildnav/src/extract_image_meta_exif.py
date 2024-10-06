@@ -51,6 +51,7 @@ for image in images_list:
     for tag in process.stdout:
         line = tag.strip().split(':')
         infoDict[line[0].strip()] = line[-1].strip()
+    print(infoDict)
 
     #Default values
     altitude = "NaN"

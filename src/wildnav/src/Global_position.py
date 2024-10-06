@@ -96,7 +96,7 @@ class GeoLocator:
         self.filter_and_copy_maps(self.map_filename, suspected_pose, delta_pose, self.map_path)
         self.geo_images_list = self.csv_read_sat_map(self.sub_map_csv)
         print(f"{len(self.geo_images_list)} satellite images were loaded.")
-        max_features = 10
+        max_features = 100
         located = False
         center = None
 
@@ -107,6 +107,14 @@ class GeoLocator:
         start_time = time.time()
         for rot in rotations:
             cv2.imwrite(self.sub_map_path + "1_query_image.png", query_image)
+
+            # 水平和垂直翻转图像
+            # flipped_image = cv2.flip(query_image, -1)  # -1 表示同时进行水平和垂直翻转
+            # # 保存翻转后的图像
+            # flipped_image_path = self.sub_map_path + "1_query_image.png"
+            # cv2.imwrite(flipped_image_path, flipped_image)
+
+            
             satellite_map_index_new, center_new, located_image_new, features_mean_new, query_image_new, feature_number = wildnav.src.superglue_utils.match_image(self.sub_map_path)
 
             if feature_number > max_features :

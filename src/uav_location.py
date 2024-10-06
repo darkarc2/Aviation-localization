@@ -51,7 +51,7 @@ class GlobalMap:
         centered_keypoints1 = matched_keypoints1 - centroid1
         centered_keypoints2 = matched_keypoints2 - centroid2
 
-        # 计算协方差矩阵
+        # 计算单应矩阵
         H = np.dot(centered_keypoints1.T, centered_keypoints2)
 
         # 进行 SVD 分解
@@ -99,7 +99,7 @@ class GlobalMap:
 
 
 
-        # 法2===============
+        # # 法2===============
         # orb = cv2.ORB_create()
         # points1, descriptors1 = orb.detectAndCompute(last_frame.image, None)
         # points2, descriptors2 = orb.detectAndCompute(now_frame.image, None)
@@ -187,7 +187,7 @@ def locate_image_in_background(uav, suspected_pose, delta_pose, start_pose_utm, 
     if location is not None:
         loca_utm = np.array(tools.latlon_to_utm(location[0], location[1])) - start_pose_utm
         queue.put((frame_index, loca_utm))
-        print(f"帧{frame_index}定位完成, add{(frame_index, loca_utm)}")
+        print(f"帧{frame_index}定位完成, add{(frame_index, location)}")
         print("===========后台修正完成=====================") 
     else:
         print(f"帧{frame_index}绝对定位失败!!!!!!!!!!error!!!!!!!!!")
@@ -211,14 +211,15 @@ def update_frames(uav):
 
 csv_file_path = '/home/arc/works/review_prj/UAV_slam/src/03.csv'
 true_pose = tools.get_true_pose(csv_file_path)
+start_num=390-1  #开始的帧数
 def load_images(image_dir, viewer, uav):
     img_count = 0
     jump=0
     for filename in sorted(os.listdir(image_dir)):
         if filename.endswith(".JPG"):
-            # jump+=1
-            # if jump<=300:
-            #     continue
+            jump+=1
+            if jump<=start_num: 
+                continue    
             img_count += 1
             if img_count > 90:
                 break
@@ -227,37 +228,25 @@ def load_images(image_dir, viewer, uav):
             update_frames(uav)
 
 
-            if img_count % 15==0:
-                start_pose_utm = [true_pose[jump][2],true_pose[jump][3]]  # 第一帧的utm坐标真值，后续都要基于这个初始真值计算
+            if img_count % 13==0:
+                start_pose_utm = [true_pose[start_num]  [2],true_pose[start_num][3]]  # 第一帧的utm坐标真值，后续都要基于这个初始真值计算
                 new_pose=uav.frames[-1].get_pose()+start_pose_utm   # 当前帧的utm坐标
                 suspected_pose=list(tools.utm_to_latlon(new_pose[0],new_pose[1]))  # 当前帧的经纬度
-                delta_pose = 0.005
+                delta_pose = 0.01
 
                 frame_index = len(uav.frames) - 1
-                # if thread_lock.acquire(blocking=False):
-                # threading.Thread(target=locate_image_in_background, args=(uav, suspected_pose, delta_pose, start_pose_utm, frame_index)).start()
-                # try:
-                #     if process_lock.acquire(False):  # 非阻塞锁定
-                if flag_is_finish:
-                        multiprocessing.Process(target=locate_image_in_background, args=(uav, suspected_pose, delta_pose, start_pose_utm, frame_index,update_queue)).start()
-                # while flag_is_finish == False:
-                #     time.sleep(0.1)
 
-                # location=uav.map.geo_locator.locate_image(uav.frames[-1].image,suspected_pose, delta_pose)
-                # if location is not None:
-                    
-                #     loca_utm=np.array(tools.latlon_to_utm(location[0],location[1]))-start_pose_utm
-
-                #     uav.frames[-1].set_pose(loca_utm)
-                #     print(f'after:{uav.frames[-1].uv_pose}')
+                # if flag_is_finish:
+                #         multiprocessing.Process(target=locate_image_in_background, args=(uav, suspected_pose, delta_pose, start_pose_utm, frame_index,update_queue)).start()
 
 
-                #     start_pose_utm = [true_pose[jump][2],true_pose[jump][3]]  # 第一帧的utm坐标真值，后续都要基于这个初始真值计算
-                #     new_pose=uav.frames[-1].get_pose()+start_pose_utm   # 当前帧的utm坐标
-                #     now_frame=int(filename[-8:-4])                      # 当前帧的文件名
-                #     now_true_pose = [true_pose[now_frame-1][2],true_pose[now_frame-1][3]]   #根据当前文件名获取真值
-                #     distance_error = ((now_true_pose[0] - new_pose[0]) ** 2 + (now_true_pose[1] - new_pose[1]) ** 2) ** 0.5  # 计算距离误差
-                #     print(f"帧{filename} -, 距离误差: {distance_error}米")
+
+            start_pose_utm = [true_pose[start_num][2],true_pose[start_num][3]]  # 第一帧的utm坐标真值，后续都要基于这个初始真值计算
+            new_pose=uav.frames[-1].get_pose()+start_pose_utm   # 当前帧的utm坐标
+            now_frame=int(filename[-8:-4])                      # 当前帧的文件名
+            now_true_pose = [true_pose[start_num+img_count-1][2],true_pose[start_num+img_count-1][3]]   #根据当前文件名获取真值
+            distance_error = ((now_true_pose[0] - new_pose[0]) ** 2 + (now_true_pose[1] - new_pose[1]) ** 2) ** 0.5  # 计算距离误差
+            print(f"帧{filename} -, 距离误差: {distance_error}米")
 
             for i in range(len(uav.frames)):  # 从最新帧开始显示
                 if uav.frames[len(uav.frames)-i-1].uv_pose is not None:
@@ -268,12 +257,12 @@ def load_images(image_dir, viewer, uav):
         cv2.imshow('Image Viewer', viewer.view)
         # 退出条件
         cv2.waitKey(1) 
+    
 
 
 
 def calculate_uav_positions(frames, uav,errors):
     uav_positions = []
-    start_num = 0
     frames = frames[start_num:]
     start_pose_utm = list(tools.latlon_to_utm(frames[0]['lat'], frames[0]['lon']))
     
@@ -282,12 +271,21 @@ def calculate_uav_positions(frames, uav,errors):
         uav_pose = uav.frames[i].get_pose()
         uav_pose = uav_pose[0:2] + np.array(start_pose_utm)
         uav_lat, uav_lon = tools.utm_to_latlon(uav_pose[0], uav_pose[1])
+        true_pose = [frame['lat'], frame['lon']]
+        true_posex,true_posey=tools.latlon_to_utm(true_pose[0],true_pose[1])
+        true_dist=((true_posex-start_pose_utm[0])**2+(true_posey-start_pose_utm[1])**2)**0.5
         
         uav_positions.append({
             'frame_num': frame['num'],
             'uav_lat': uav_lat,
             'uav_lon': uav_lon,
-            'error': errors[i]['distance_error']
+            'error': errors[i]['distance_error'],
+            'true_distance': true_dist,
+            'u':uav.frames[i].uv_pose['translation'][0],
+            'v':uav.frames[i].uv_pose['translation'][1],
+            'phi':frame['Phi1'],
+            'true_posex':true_posex-start_pose_utm[0],
+            'true_posey':true_posey-start_pose_utm[1]
         })
     
     return uav_positions
@@ -299,13 +297,15 @@ def print_data(uav):
     # 假设uav对象已经定义并包含frames
     errors = tools.calculate_errors(frames, uav)
     
+    count=0
     for error in errors:
-        print(f"帧{error['frame_num']} - 纬度误差: {error['lat_error']}, 经度误差: {error['lon_error']}, 距离误差: {error['distance_error']}米")
+        count+=1
+        print(f"帧{count} - 纬度误差: {error['lat_error']}, 经度误差: {error['lon_error']}, 距离误差: {error['distance_error']}米")
      # 保存UAV位置数据到CSV文件
      # 假设uav对象已经定义并包含frames
     uav_positions = calculate_uav_positions(frames, uav,errors)
     with open('/home/arc/works/review_prj/UAV_slam/src/uav_track.csv', 'w', newline='') as csvfile:
-        fieldnames = ['frame_num', 'uav_lat', 'uav_lon','error']
+        fieldnames = ['frame_num', 'uav_lat', 'uav_lon','error','true_distance','u','v','phi','true_posex','true_posey']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         writer.writeheader()
@@ -345,7 +345,11 @@ if __name__ == "__main__":
         # 退出条件
         if cv2.waitKey(1) & 0xFF == 27:  # 按下ESC键退出
             break
+        # 如果按下f
+        if cv2.waitKey(1) & 0xFF == ord('f'):
+            print_data(uav)
     cv2.destroyAllWindows()
+    update_frames(uav)
     # for i in range(len(uav.frames)):
     #     print(f"帧{i}pose_in_camera:{uav.frames[i].uv_pose_to_pose_in_camera()}")
     # for i in range(len(uav.frames)):

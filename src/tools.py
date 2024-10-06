@@ -111,10 +111,10 @@ def get_true_pose(csv_path):
 
 def calculate_errors(frames, uav):
     errors = []
-    start_num = 0
+    start_num = 390-1
     frames = frames[start_num:]
     start_pose_utm = list(latlon_to_utm(frames[0]['lat'],frames[0]['lon']))
-    end_pose_utm = list(latlon_to_utm(frames[len( uav.frames)]['lat'],frames[len( uav.frames)]['lon']))
+    end_pose_utm = list(latlon_to_utm(frames[len( uav.frames)-1]['lat'],frames[len( uav.frames)-1]['lon']))
     for i in range(len( uav.frames)):
         frame = frames[i]
         uav_pose = uav.frames[i].get_pose()
