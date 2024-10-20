@@ -150,7 +150,7 @@ class ImageViewer:
                     view_mid_point2 = view_mid_point2.astype(int)
             
                     # 绘制连线
-                    cv2.line(self.view, tuple(view_mid_point1), tuple(view_mid_point2), (0, 255, 0), 2)
+                    # cv2.line(self.view, tuple(view_mid_point1), tuple(view_mid_point2), (0, 255, 0), 2)
             
             # 添加相机位置文本
             cv2.putText(self.view, f'Camera Pos: {self.camera_pos}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)

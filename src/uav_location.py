@@ -211,7 +211,7 @@ def update_frames(uav):
 
 csv_file_path = '/home/arc/works/review_prj/UAV_slam/src/03.csv'
 true_pose = tools.get_true_pose(csv_file_path)
-start_num=390-1  #开始的帧数
+start_num=580-1  #开始的帧数
 def load_images(image_dir, viewer, uav):
     img_count = 0
     jump=0
@@ -221,7 +221,7 @@ def load_images(image_dir, viewer, uav):
             if jump<=start_num: 
                 continue    
             img_count += 1
-            if img_count > 90:
+            if img_count > 5:
                 break
             path = os.path.join(image_dir, filename)
             uav.read_frame(path)
@@ -236,6 +236,7 @@ def load_images(image_dir, viewer, uav):
 
                 frame_index = len(uav.frames) - 1
 
+                # locate_image_in_background(uav, suspected_pose, delta_pose, start_pose_utm, frame_index,update_queue)
                 # if flag_is_finish:
                 #         multiprocessing.Process(target=locate_image_in_background, args=(uav, suspected_pose, delta_pose, start_pose_utm, frame_index,update_queue)).start()
 
@@ -330,13 +331,15 @@ if __name__ == "__main__":
     # load_thread = threading.Thread(target=load_images, args=(image_dir, viewer, uav))
     # load_thread.start()
 
-
+    start_time = time.time()
     # 等待加载线程结束
     # load_thread.join()
     load_images(image_dir, viewer, uav)
 
     t_pose=uav.frames[-1].get_pose()
     print("utm_POS",t_pose)
+    end_time = time.time()
+    print(f"总共耗时: {end_time - start_time}秒")
 
     while True:
         # 显示图像
